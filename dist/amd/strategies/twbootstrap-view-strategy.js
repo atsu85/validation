@@ -1,30 +1,36 @@
-define(['exports', '../validation-view-strategy'], function (exports, _validationViewStrategy) {
+define(['exports', '../validation-view-strategy', 'aurelia-logging'], function (exports, _validationViewStrategy, _aureliaLogging) {
   'use strict';
 
   exports.__esModule = true;
 
   function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-  function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) subClass.__proto__ = superClass; }
+  function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
   var TWBootstrapViewStrategyBase = (function (_ValidationViewStrategy) {
+    _inherits(TWBootstrapViewStrategyBase, _ValidationViewStrategy);
+
     function TWBootstrapViewStrategyBase(appendMessageToInput, appendMessageToLabel, helpBlockClass) {
+      var formGroupClass = arguments.length <= 3 || arguments[3] === undefined ? "form-group" : arguments[3];
+      var validationMsgTagName = arguments.length <= 4 || arguments[4] === undefined ? "p" : arguments[4];
+
       _classCallCheck(this, TWBootstrapViewStrategyBase);
 
       _ValidationViewStrategy.call(this);
       this.appendMessageToInput = appendMessageToInput;
       this.appendMessageToLabel = appendMessageToLabel;
       this.helpBlockClass = helpBlockClass;
+      this.formGroupClass = formGroupClass;
+      this.validationMsgTagName = validationMsgTagName;
+      this.logger = _aureliaLogging.getLogger('validation');
     }
 
-    _inherits(TWBootstrapViewStrategyBase, _ValidationViewStrategy);
-
     TWBootstrapViewStrategyBase.prototype.searchFormGroup = function searchFormGroup(currentElement, currentDepth) {
-      if (currentDepth === 5) {
+      if (currentDepth === 5 || !currentElement) {
         return null;
       }
 
-      if (currentElement.classList && currentElement.classList.contains('form-group')) {
+      if (currentElement.classList && currentElement.classList.contains(this.formGroupClass)) {
         return currentElement;
       }
 
@@ -50,32 +56,42 @@ define(['exports', '../validation-view-strategy'], function (exports, _validatio
     };
 
     TWBootstrapViewStrategyBase.prototype.appendMessageToElement = function appendMessageToElement(element, validationProperty) {
-      var helpBlock = element.nextSibling;
-      if (helpBlock) {
-        if (!helpBlock.classList) {
-          helpBlock = null;
-        } else if (!helpBlock.classList.contains(this.helpBlockClass)) {
-          helpBlock = null;
-        }
-      }
+      var helpBlock = this.findExistingHelpBlock(element);
 
       if (!helpBlock) {
-        helpBlock = document.createElement('p');
+        helpBlock = document.createElement(this.validationMsgTagName);
         helpBlock.classList.add('help-block');
         helpBlock.classList.add(this.helpBlockClass);
-        if (element.nextSibling) {
-          element.parentNode.insertBefore(helpBlock, element.nextSibling);
-        } else {
-          element.parentNode.appendChild(helpBlock);
-        }
+        this.addHelpBlockToElement(element, helpBlock);
       }
 
       helpBlock.textContent = validationProperty ? validationProperty.message : '';
     };
 
+    TWBootstrapViewStrategyBase.prototype.findExistingHelpBlock = function findExistingHelpBlock(element) {
+      var helpBlock = element.nextSibling;
+      if (helpBlock) {
+        if (!helpBlock.classList) {
+          return null;
+        } else if (!helpBlock.classList.contains(this.helpBlockClass)) {
+          return null;
+        }
+      }
+      return helpBlock;
+    };
+
+    TWBootstrapViewStrategyBase.prototype.addHelpBlockToElement = function addHelpBlockToElement(element, helpBlock) {
+      if (element.nextSibling) {
+        element.parentNode.insertBefore(helpBlock, element.nextSibling);
+      } else {
+        element.parentNode.appendChild(helpBlock);
+      }
+    };
+
     TWBootstrapViewStrategyBase.prototype.appendUIVisuals = function appendUIVisuals(validationProperty, currentElement) {
       var formGroup = this.searchFormGroup(currentElement, 0);
       if (formGroup === null) {
+        this.logger.warn("Didn't find formGroup - can't show validation message for element:", currentElement);
         return;
       }
 

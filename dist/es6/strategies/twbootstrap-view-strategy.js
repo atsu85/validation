@@ -1,19 +1,29 @@
 import {ValidationViewStrategy} from '../validation-view-strategy';
+import * as TheLogManager from 'aurelia-logging';
 
 export class TWBootstrapViewStrategyBase extends ValidationViewStrategy {
-  constructor(appendMessageToInput, appendMessageToLabel, helpBlockClass) {
+  appendMessageToInput: boolean;
+  appendMessageToLabel: boolean;
+  helpBlockClass: string;
+  formGroupClass: string;
+  validationMsgTagName: string;
+
+  constructor(appendMessageToInput: boolean, appendMessageToLabel: boolean, helpBlockClass: string, formGroupClass = "form-group", validationMsgTagName = "p") {
     super();
     this.appendMessageToInput = appendMessageToInput;
     this.appendMessageToLabel = appendMessageToLabel;
     this.helpBlockClass = helpBlockClass;
+    this.formGroupClass = formGroupClass;
+    this.validationMsgTagName = validationMsgTagName;
+    this.logger = TheLogManager.getLogger('validation');
   }
 
   searchFormGroup(currentElement, currentDepth) {
-    if (currentDepth === 5) {
+    if (currentDepth === 5 || !currentElement) {
       return null;
     }
 
-    if (currentElement.classList && currentElement.classList.contains('form-group')) {
+    if (currentElement.classList && currentElement.classList.contains(this.formGroupClass)) {
       return currentElement;
     }
 
@@ -42,32 +52,43 @@ export class TWBootstrapViewStrategyBase extends ValidationViewStrategy {
   }
 
   appendMessageToElement(element, validationProperty) {
-    let helpBlock = element.nextSibling;
-    if (helpBlock) {
-      if (!helpBlock.classList) {
-        helpBlock = null;
-      } else if (!helpBlock.classList.contains(this.helpBlockClass)) {
-        helpBlock = null;
-      }
-    }
+    let helpBlock = this.findExistingHelpBlock(element);
 
     if (!helpBlock) {
-      helpBlock = document.createElement('p');
+      helpBlock = document.createElement(this.validationMsgTagName);
       helpBlock.classList.add('help-block');
       helpBlock.classList.add(this.helpBlockClass);
-      if (element.nextSibling) {
-        element.parentNode.insertBefore(helpBlock, element.nextSibling);
-      } else {
-        element.parentNode.appendChild(helpBlock);
-      }
+      this.addHelpBlockToElement(element, helpBlock);
     }
 
     helpBlock.textContent = validationProperty ? validationProperty.message : '';
   }
 
+  findExistingHelpBlock(element: Element) {
+    var helpBlock = element.nextSibling;
+    if (helpBlock) {
+      if (!helpBlock.classList) {
+        return null;
+      }
+      else if (!helpBlock.classList.contains(this.helpBlockClass)) {
+        return null;
+      }
+    }
+    return helpBlock;
+  }
+
+  addHelpBlockToElement(element: Element, helpBlock: Element) {
+    if (element.nextSibling) {
+      element.parentNode.insertBefore(helpBlock, element.nextSibling);
+    } else {
+      element.parentNode.appendChild(helpBlock);
+    }
+  }
+
   appendUIVisuals(validationProperty, currentElement) {
     let formGroup = this.searchFormGroup(currentElement, 0);
     if (formGroup === null) {
+      this.logger.warn("Didn't find formGroup - can't show validation message for element:", currentElement);
       return;
     }
 
@@ -111,4 +132,3 @@ TWBootstrapViewStrategy.AppendToInput =
   new TWBootstrapViewStrategyBase(true, false, 'aurelia-validation-message');
 TWBootstrapViewStrategy.AppendToMessage =
   new TWBootstrapViewStrategyBase(false, true, 'aurelia-validation-message');
-

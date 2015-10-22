@@ -16,7 +16,7 @@
   "main": "dist/commonjs/index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aurelia/validation"
+    "url": "https://github.com/atsu85/validation"
   },
   "jspm": {
     "main": "index",
